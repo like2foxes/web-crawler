@@ -9,7 +9,7 @@ import { JSDOM } from "jsdom";
 * @throws {Error} an "E_INVALID_URL" error
 */
 export function normalizeURL(url) {
-	if(!URL.canParse(url)) {
+	if (!URL.canParse(url)) {
 		console.error('can\'t parse ', url)
 		throw new Error('E_INVALID_URL')
 	}
@@ -18,18 +18,49 @@ export function normalizeURL(url) {
 }
 
 /**
+* @summary recursively crawl the all the links in site
+* @param {URL} baseURL - the base url of the site
+* @param {URL} currentURL - the url currently being visited
+* @param {Map<string, number>} pages - aggregation of the links being visited
+* @return {Promise<Map<string, number>>} all the pages
+*/
+export async function crawlPage(baseURL, currentURL, pages) {
+	if(baseURL.hostname !== currentURL.hostname) {
+		return pages;
+	}
+
+	const normalizedCurrentURL = normalizeURL(currentURL.toString());
+	const oldValue = pages.get(normalizedCurrentURL);
+	if(typeof oldValue !== 'undefined') {
+		pages.set(normalizedCurrentURL, oldValue + 1);
+		if(normalizedCurrentURL === normalizeURL(baseURL.toString())) {
+			pages.set(normalizedCurrentURL, 0);
+		}
+		return pages;
+	}
+	pages.set(normalizedCurrentURL, 1);
+
+	const next = await getHTMLFromURL(currentURL);
+	const urls = getURLsFromHTML(next, baseURL);
+	if(urls.length) {
+		await Promise.all(urls.map(url => {
+			return crawlPage(baseURL, url, pages);
+		}));
+	}
+	return pages;
+}
+
+/**
 * @summary scan all the anchor tags on [htmlBody]{@link htmlBody} and transform them into absolute path
 * @param {string} htmlBody - an html string represntation
-* @param {string} baseURL - the base url to create an absolute path
-* @returns {string[]} - the paths found in [htmlBody]{@link htmlBody} as absolute paths
+* @param {URL} baseURL - the base url to create an absolute path
+* @returns {URL[]} - the paths found in [htmlBody]{@link htmlBody} as absolute paths
 */
-export function getURLFromHTML(htmlBody, baseURL) {
+export function getURLsFromHTML(htmlBody, baseURL) {
 	return getAnchorTagsFromHTML(htmlBody)
 		.map(toHref)
 		.filter(hasHref)
-		.map(maybeRelativeUrl => 
-			normalizeURL(absolutePathOf(baseURL, maybeRelativeUrl))
-		);
+		.map(maybeRelativeUrl => absolutePathOf(baseURL, maybeRelativeUrl));
 }
 
 /**
@@ -76,20 +107,20 @@ function toHref(a) {
 * @returns {boolean}
 */
 function hasHref(href) {
-	if(href)
+	if (href)
 		return true;
 	return false;
 }
 
 /**
-* @param {string} baseURL
+* @param {URL} baseURL
 * @param {string} href
-* @returns {string}
+* @returns {URL}
 */
 function absolutePathOf(baseURL, href) {
-	if(href.startsWith('/'))
-		return `${removeSlashes(baseURL)}${href}`;
-	return href;
+	if (href.startsWith('/'))
+		return new URL(`${removeSlashes(baseURL.toString())}${href}`);
+	return new URL(href);
 }
 
 /**
