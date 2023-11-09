@@ -1,14 +1,12 @@
 'use strict'
 import {getUrlArgument} from './input.js';
-import { getHTMLFromURL, getURLFromHTML } from './crawl.js';
+import { crawlPage } from './crawl.js';
+import { printReport, sortURLs } from './printReport.js';
 
 async function main() {
 	const url = getUrlArgument();
-	const html = await getHTMLFromURL(url);
-	const urls = getURLFromHTML(html, url.toString());
-	for(const url of urls) {
-		console.log(url);
-	}
+	const urls = await crawlPage(url, url, new Map());
+	printReport(sortURLs(urls));
 }
 
 main()
