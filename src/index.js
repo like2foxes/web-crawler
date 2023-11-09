@@ -1,10 +1,14 @@
 'use strict'
 import {getUrlArgument} from './input.js';
-import { getURLFromHTML } from './crawl.js';
+import { getHTMLFromURL, getURLFromHTML } from './crawl.js';
 
-function main() {
-	const link = getUrlArgument()
-	console.log(link)
+async function main() {
+	const url = getUrlArgument();
+	const html = await getHTMLFromURL(url);
+	const urls = getURLFromHTML(html, url.toString());
+	for(const url of urls) {
+		console.log(url);
+	}
 }
 
 main()
