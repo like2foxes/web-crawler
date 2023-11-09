@@ -10,10 +10,11 @@ import { JSDOM } from "jsdom";
 */
 export function normalizeURL(url) {
 	if(!URL.canParse(url)) {
+		console.error('can\'t parse ', url)
 		throw new Error('E_INVALID_URL')
 	}
-	const { hostname, pathname } = new URL(url)
-	return `${removeSlashes(hostname)}/${removeSlashes(pathname)}`
+	const { hostname, pathname } = cleanURLParts(new URL(url));
+	return `${hostname}${pathname ? '/' : ''}${pathname}`
 }
 
 /**
@@ -26,7 +27,9 @@ export function getURLFromHTML(htmlBody, baseURL) {
 	return getAnchorTagsFromHTML(htmlBody)
 		.map(toHref)
 		.filter(hasHref)
-		.map(maybeRelativeUrl => absolutePathOf(baseURL, maybeRelativeUrl));
+		.map(maybeRelativeUrl => 
+			normalizeURL(absolutePathOf(baseURL, maybeRelativeUrl))
+		);
 }
 
 /**
@@ -37,6 +40,17 @@ export function getURLFromHTML(htmlBody, baseURL) {
 export async function getHTMLFromURL(url) {
 	const html = await JSDOM.fromURL(url.toString());
 	return html.serialize();
+}
+
+/**
+* @param {URL} url - a valid url
+* @returns {{hostname: string, pathname: string}} trimed and clear of backslash
+*/
+function cleanURLParts(url) {
+	return {
+		hostname: removeSlashes(url.hostname.trim()),
+		pathname: removeSlashes(url.pathname.trim())
+	}
 }
 
 /**
@@ -74,7 +88,7 @@ function hasHref(href) {
 */
 function absolutePathOf(baseURL, href) {
 	if(href.startsWith('/'))
-		return `${baseURL}${href}`;
+		return `${removeSlashes(baseURL)}${href}`;
 	return href;
 }
 
@@ -83,7 +97,7 @@ function absolutePathOf(baseURL, href) {
 * @returns {string}
 */
 function removeSlashes(str) {
-	return removePrefixSlash(removeTrailingSlash(str));
+	return removePrefixSlash(removeTrailingSlash(str.trim()));
 }
 
 /**
