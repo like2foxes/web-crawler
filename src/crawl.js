@@ -30,6 +30,16 @@ export function getURLFromHTML(htmlBody, baseURL) {
 }
 
 /**
+* @summary extract the content from the given url
+* @param {URL} url - a valid URL object
+* @return {Promise<string>} an HTML string represntation
+*/
+export async function getHTMLFromURL(url) {
+	const html = await JSDOM.fromURL(url.toString());
+	return html.serialize();
+}
+
+/**
 * @param {string} htmlBody
 * @returns {HTMLAnchorElement[]}
 */
